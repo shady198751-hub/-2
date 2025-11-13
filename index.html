@@ -400,6 +400,10 @@
         const hiddenIframe = document.getElementById('hiddenIframe');
         const scheduleMessage = document.getElementById('scheduleMessage');
         const modalSources = document.getElementById('modalSources');
+
+        // ** NEW: Global variable to track redirect state **
+        let shouldRedirect = false; 
+        const REDIRECT_URL = 'https://tabarakmariouteya.site/';
         
         // =========================================================================================
         // وظائف النافذة المنبثقة (Modal Functions)
@@ -409,6 +413,9 @@
             // تحديث محتوى النافذة المنبثقة
             modalTitle.textContent = title;
             modalMessage.innerHTML = message; // استخدام innerHTML لدعم تنسيق HTML/Markdown
+            
+            // ** NEW: Set global redirect flag **
+            shouldRedirect = isSuccess; 
 
             // تحديث الأيقونة والألوان بناءً على حالة النجاح/الخطأ
             if (isSuccess) {
@@ -456,6 +463,12 @@
         }
 
         function hideModal() {
+            // ** MODIFIED: Check if redirect is needed before hiding **
+            if (shouldRedirect) {
+                window.location.href = REDIRECT_URL;
+                return; 
+            }
+            
             // إخفاء النافذة المنبثقة بتأثير انتقالي
             modalContent.classList.remove('scale-100', 'opacity-100');
             modalContent.classList.add('scale-95', 'opacity-0');
@@ -650,6 +663,13 @@
             
             setSubmissionState(true);
 
+            // ** MODIFIED: Show success message and set redirect flag (shouldRedirect = true) **
+            showModal(
+                true, 
+                'تم التسجيل بنجاح! 🎉', 
+                'تم إرسال بياناتك بنجاح. سيقوم فريق خدمة العملاء بالتواصل معك قريباً لتأكيد تفاصيل الموعد. اضغط "حسناً، فهمت" للعودة إلى الموقع الرسمي.'
+            );
+            
             // 2. إعداد رابط نموذج Google Forms (الجزء الأكثر أهمية)
             // الرابط الأساسي للإرسال
             const GOOGLE_FORM_BASE_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSewlxBaP1IXXYaiyzD0F9k0RkE1wFpqo4gZHjPdLWqNQ9UB4w/formResponse?usp=pp_url';
@@ -687,20 +707,16 @@
             // 4. دمج الرابط الأساسي مع سلسلة الاستعلام
             const finalFormUrl = GOOGLE_FORM_BASE_URL + (queryString ? '&' + queryString : '');
 
-            // 5. استخدام Iframe المخفي لإرسال النموذج
+            // 5. استخدام Iframe المخفي لإرسال النموذج (لضمان إرسال البيانات بشكل متزامن)
             hiddenIframe.src = finalFormUrl;
+
+            // ** NEW: Reset the form immediately after showing success modal and sending data **
+            setSubmissionState(false);
+            bookingForm.reset();
+            updateDoctorOptions(); // لإعادة تعيين قائمة الأطباء
+            checkAndDisplaySchedule(); // لإخفاء رسالة الجدول
             
-            // ** ملاحظة: لا يمكننا اكتشاف نجاح الإرسال بشكل مؤكد... سنفترض النجاح ونعرض رسالة النجاح فورًا (أو بعد تأخير بسيط).
-            setTimeout(() => {
-                setSubmissionState(false);
-                // 6. عرض رسالة النجاح
-                showModal(true, 'تم الحجز بنجاح! 🎉', 'نشكرك على حجز موعدك. سيقوم فريق خدمة العملاء بالتواصل معك قريباً لتأكيد تفاصيل الموعد.');
-                
-                // 7. مسح النموذج
-                bookingForm.reset();
-                updateDoctorOptions(); // لإعادة تعيين قائمة الأطباء
-                checkAndDisplaySchedule(); // لإخفاء رسالة الجدول
-            }, 1000); // تأخير بسيط لمحاكاة عملية الإرسال
+            // ** REMOVED: Automatic redirect setTimeout **
         });
 
         // دالة يتم استدعاؤها عند تحميل الـ iframe (لا تستخدم لتأكيد النجاح ولكن للتحقق/التنظيف)
